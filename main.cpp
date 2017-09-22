@@ -3,14 +3,32 @@
 #include <math.h>
 #include <algorithm>
 
-#define SUCCES_ 1;
-#define FAILURE_ 0;
+
 
 #define POSITIVE_INFINITY 1000000000
 
 class Node;
 
 typedef std::vector<std::vector<Node>> Map;
+
+struct Pos
+{
+	Pos(int X, int Y);
+	Pos();
+	int X_, Y_;
+};
+
+Pos::Pos(int X, int Y)
+{
+	X_ = X;
+	Y_ = Y;
+}
+
+Pos::Pos()
+{
+	X_ = 0;
+	Y_ = 0;
+}
 
 class Node
 {
@@ -126,10 +144,12 @@ int GetLowestScoreNode(std::vector<Node> Vec)
 
 bool IsInVector(std::vector<Node> Vec, Node Target)
 {
-	return((std::find(Vec.begin(), Vec.end(), Target)) != Vec.end());
+	//TODO: Find an other way to tell if a Node is in a vector
+	//return((std::find(Vec.begin(), Vec.end(), Target)) != Vec.end());
+	return 1;
 }
 
-bool A_star(Node Begin, Node End)
+Node A_star(Node Begin, Node End)
 {
 	std::vector<Node> ClosedSet;
 	std::vector<Node> OpenSet;
@@ -145,7 +165,7 @@ bool A_star(Node Begin, Node End)
 		CurrentNode = OpenSet[BestNodeIndex];
 
 		if(CurrentNode == End)
-			return SUCCES_;
+			break;
 
 		OpenSet.erase(OpenSet.begin() + BestNodeIndex);
 		ClosedSet.push_back(CurrentNode);
@@ -174,5 +194,24 @@ bool A_star(Node Begin, Node End)
 		}
 	}
 
-	return FAILURE_;
+	return CurrentNode; //if node != End; Failure else; Succes 
+}
+
+std::vector<Pos> ConstructPath(Node * EndNode, Node Start, Node GoalNode)
+{
+	std::vector<Pos> Final;
+
+	Node * TempNode = EndNode;
+
+	if(EndNode->X() != GoalNode.X() || EndNode->Y() != GoalNode.Y())
+		return Final;
+
+	while(TempNode->X() != Start.X() && TempNode->X() != Start.X())
+	{
+		Final.push_back(Pos(TempNode->X(), TempNode->Y()));
+
+		TempNode = TempNode->GetCameFrom();
+	}
+
+	return Final;	//If size = 0; Failure,  Else; Succes
 }
