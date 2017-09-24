@@ -3,13 +3,12 @@
 #include <math.h>
 #include <algorithm>
 
+#include "Map.h"
+#include "Map_SteamWorks.h"
 
 
 #define POSITIVE_INFINITY 1000000000
 
-class Node;
-
-typedef std::vector<std::vector<Node>> Map;
 
 struct Pos
 {
@@ -35,11 +34,13 @@ class Node
 
 public:
 
-	Node(int X, int Y, bool IsWall, bool AllowDiag);
+	Node(int X, int Y, bool IsWall, bool AllowDiag, bool IsStart);
 
+	void NewPath(std::vector<Pos> Path, Node PrevNode);
 
 	void GetNeighbours(Map map);
 	inline std::vector<Node> Neighbours(){return Neighbours_;};
+	
 	
 	inline int X(){return X_;};
 	inline int Y(){return Y_;};
@@ -48,11 +49,11 @@ public:
 	inline void CalcF_Score(){F_Score_ = G_Score_ + H_Score_;};
 	inline int F_Score(){return F_Score_;};
 
-	int CalcHeuristic(Node EndNode);				//may also return value to simplifie main code
-	inline int H_Score(){return H_Score_;};
+	float CalcHeuristic(Node EndNode);				//may also return value to simplifie main code
+	inline float H_Score(){return H_Score_;};
 	
 	inline void SetG_Score(int G_Score){G_Score_ = G_Score;};
-	inline int G_Score(){return G_Score_;};
+	inline float G_Score(){return G_Score_;};
 
 	inline void SetIsWall(bool IsWall){IsWall_ = IsWall;};
 	inline bool IsWall(){return IsWall_;};
@@ -60,37 +61,41 @@ public:
 	inline void SetCameFrom(Node *CameFrom){CameFrom_ = CameFrom;};
 	inline Node * GetCameFrom(){return CameFrom_;};
 
+	inline std::vector<Pos> OptimumPath(){return OptimumPath_;};
+
 private:
 	int X_, Y_;
-	int F_Score_, H_Score_, G_Score_;
+	float F_Score_, H_Score_, G_Score_;
 
 	bool AllowDiags_, IsWall_;
 
 	std::vector<Node> Neighbours_;
 	Node * CameFrom_;
+	std::vector<Pos> OptimumPath_;
 };
 
-Node::Node(int X = 0, int Y = 0, bool IsWall = false, bool AllowDiags = true):
+Node::Node(int X = 0, int Y = 0, bool IsWall = false, bool AllowDiags = true, bool IsStart = false):
 X_(X),
 Y_(Y),
 
 IsWall_(IsWall),
 AllowDiags_(AllowDiags),
 
-F_Score_(POSITIVE_INFINITY),
-H_Score_(POSITIVE_INFINITY),
-G_Score_(POSITIVE_INFINITY),
+F_Score_(POSITIVE_INFINITY * !IsStart),
+H_Score_(POSITIVE_INFINITY * !IsStart),
+G_Score_(POSITIVE_INFINITY * !IsStart),
 
 CameFrom_(NULL)
 {
-
+	if(IsStart)
+		OptimumPath_.push_back(Pos(X_, Y_));
 }
 
 
 //Make a guess about the distance from a node to the end
 //we can under estimate it without a problem, but we can't under estimate it
 
-int Node::CalcHeuristic(Node EndNode)
+float Node::CalcHeuristic(Node EndNode)
 {
 	if(AllowDiags_)
 		H_Score_ = std::sqrt(std::pow(X_ - EndNode.X(), 2.0) + (std::pow(Y_ - EndNode.Y(), 2.0))); 
@@ -101,35 +106,52 @@ int Node::CalcHeuristic(Node EndNode)
 }
 
 void Node::GetNeighbours(Map map)
-{
+{	
 	//TODO : add a map of walls
-	Neighbours_.push_back(Node(X_ + 1, Y_));
-	Neighbours_.push_back(Node(X_ - 1, Y_));
-	Neighbours_.push_back(Node(X_, Y_ + 1));
-	Neighbours_.push_back(Node(X_, Y_ - 1));
+	
+	
+	if(map[X_ + 1][Y_] != 1)
+		Neighbours_.push_back(Node(X_ + 1, Y_));
+	if(map[X_ - 1][Y_] != 1)
+		Neighbours_.push_back(Node(X_ - 1, Y_));
+	if(map[X_][Y_ + 1] != 1)
+		Neighbours_.push_back(Node(X_, Y_ + 1));
+	if(map[X_][Y_ - 1] != 1)
+		Neighbours_.push_back(Node(X_, Y_ - 1));
 
 	if(AllowDiags_)
 	{
-		Neighbours_.push_back(Node(X_ + 1, Y_ + 1));
-		Neighbours_.push_back(Node(X_ - 1, Y_ + 1));
-		Neighbours_.push_back(Node(X_ + 1, Y_ - 1));
-		Neighbours_.push_back(Node(X_ - 1, Y_ - 1));
+		if(map[X_ + 1][Y_ + 1] != 1)
+			Neighbours_.push_back(Node(X_ + 1, Y_ + 1));
+		if(map[X_ - 1][Y_ + 1] != 1)
+			Neighbours_.push_back(Node(X_ - 1, Y_ + 1));
+		if(map[X_ + 1][Y_ - 1] != 1)
+			Neighbours_.push_back(Node(X_ + 1, Y_ - 1));
+		if(map[X_ - 1][Y_ - 1] != 1)
+			Neighbours_.push_back(Node(X_ - 1, Y_ - 1));
 	}
 }
 
-
+void Node::NewPath(std::vector<Pos> Path, Node PrevNode)
+{
+	OptimumPath_ = Path;
+	OptimumPath_.push_back(Pos(PrevNode.X(), PrevNode.Y()));
+}
 
 bool operator == (Node &a, Node &b)
 {
 	return (a.X() == b.X()) && (a.Y() == b.Y());
 }
 
-
+std::ostream &operator<<(std::ostream &os, Node &a)
+{
+	return os<<"[ "<<a.X()<<", "<<a.Y()<<" ]\tF : "<<a.F_Score()<<",  G : "<<a.G_Score()<<",  H : "<<a.H_Score();
+}
 
 //Return the index of the best node in an array of Node (the one with the lowest F_Score_)
 int GetLowestScoreNode(std::vector<Node> Vec)
 {
-	int BestScore = POSITIVE_INFINITY, Index;
+	int BestScore = POSITIVE_INFINITY, Index = 0;
 
 	for(int i = 0; i < Vec.size(); ++i)
 	{
@@ -139,14 +161,52 @@ int GetLowestScoreNode(std::vector<Node> Vec)
 			Index = i;
 		}
 	}
+
 	return Index;
 }
 
 bool IsInVector(std::vector<Node> Vec, Node Target)
 {
-	//TODO: Find an other way to tell if a Node is in a vector
 	//return((std::find(Vec.begin(), Vec.end(), Target)) != Vec.end());
-	return 1;
+	//return 0;
+
+	for(int i = 0; i < Vec.size(); ++i)
+	{
+		if(Vec[i].X() == Target.X() && Vec[i].Y() == Target.Y())
+			return 1;
+	}
+
+	return 0;
+}
+
+void Draw(std::vector<Pos> Path, Pos Target, Map map)
+{
+	for(int i = 0; i < HEIGHT; ++i)
+	{
+		for(int j = 0; j < WIDTH; ++j)
+		{
+			bool PrintPath = false;
+
+			for(int k = 0; k < Path.size(); ++k)
+			{
+				if(Path[k].X_ == j && Path[k].Y_ == i)
+				{
+					PrintPath = true;
+					break;
+				}
+			}
+
+			if(PrintPath)
+				std::cout<<"*";
+			else if(map[j][i] == 1)
+				std::cout<<"#";
+			else if(j == Target.X_ && i == Target.Y_)
+				std::cout<<"@";
+			else
+				std::cout<<" ";
+		}
+		std::cout<<"\n";
+	}
 }
 
 Node A_star(Node Begin, Node End)
@@ -157,61 +217,85 @@ Node A_star(Node Begin, Node End)
 
 	Node CurrentNode = Begin;
 
-	Map map;
-
-	while(OpenSet.size() > 0)
+	//Map map;
+	while(OpenSet.size() > 0 && Map_SteamWorks[End.X()][End.Y()] != 1)
 	{
+
+		//std::cout<<"Searching...\n";
+		
 		int BestNodeIndex = GetLowestScoreNode(OpenSet);
 		CurrentNode = OpenSet[BestNodeIndex];
 
 		if(CurrentNode == End)
-			break;
+		{
+			std::cout<<"Succes!!!\n\n";
+			system("pause");
+			return CurrentNode;
+		}
+		//std::cout<<"Current : "<<CurrentNode<<"\n";
+		//std::cout<<"Best node index "<<BestNodeIndex<<"\n";
+		for(int i = 0; i < OpenSet.size(); ++i)
+		{
+			//std::cout<<OpenSet[i]<<"\n";
+		}
+		//system("pause");
 
 		OpenSet.erase(OpenSet.begin() + BestNodeIndex);
+		//std::cout<<OpenSet.size()<<"\n\n";
+
 		ClosedSet.push_back(CurrentNode);
 		
-		CurrentNode.GetNeighbours(map);
+		CurrentNode.GetNeighbours(Map_SteamWorks);
 
 		
 		for(int i = 0; i < CurrentNode.Neighbours().size(); ++i)
 		{
 			Node Neighbour = CurrentNode.Neighbours()[i];
-
-			if(IsInVector(ClosedSet, Neighbour))	//Already evaluated
+			//std::cout<<"voisin "<<i<<" : "<<CurrentNode.X()<<",  "<<CurrentNode.Y()<<" -> "<<Neighbour.X()<<",  "<<Neighbour.Y()<<"\n";
+			
+			if(IsInVector(ClosedSet, CurrentNode.Neighbours()[i]))	//Already evaluated
 				continue;
+			
+			if(!IsInVector(OpenSet, CurrentNode.Neighbours()[i]))
+				OpenSet.push_back(CurrentNode.Neighbours()[i]);
 
-			if(!IsInVector(OpenSet, Neighbour))
-				OpenSet.push_back(Neighbour);
-
-			int Tentative_GScore = CurrentNode.G_Score() + CurrentNode.CalcHeuristic(Neighbour);
-			if(Tentative_GScore >= OpenSet.back().F_Score())			//Not a new best path
+			double Tentative_GScore = CurrentNode.G_Score() + CurrentNode.CalcHeuristic(OpenSet.back());
+			//std::cout<<"Tentative : "<<Tentative_GScore<<" VS "<<OpenSet.back().G_Score()<<"\n";
+			if(Tentative_GScore >= OpenSet.back().G_Score())			//Not a new best path
 				continue;
-
+			
 			//New best path
-			Neighbour.SetCameFrom(&CurrentNode);
-			Neighbour.SetG_Score(Tentative_GScore);
-			Neighbour.CalcF_Score();
+			
+			OpenSet.back().NewPath(CurrentNode.OptimumPath(), CurrentNode);
+			
+			
+			OpenSet.back().SetG_Score(Tentative_GScore);
+			OpenSet.back().CalcHeuristic(End);
+			OpenSet.back().CalcF_Score();
+			//std::cout<<"Voisin "<<i<<" : "<<OpenSet.back().F_Score()<<"\n";
+			//system("pause");
 		}
+		Draw(CurrentNode.OptimumPath(), Pos(End.X(), End.Y()), Map_SteamWorks);
+		system("cls");
+
 	}
 
-	return CurrentNode; //if node != End; Failure else; Succes 
+
+	std::cout<<"No solution!\n";
+	system("pause");
+	return CurrentNode;
 }
 
-std::vector<Pos> ConstructPath(Node * EndNode, Node Start, Node GoalNode)
+
+int main()
 {
-	std::vector<Pos> Final;
+	Node StartNode(1, 1, 0, 1, 1);
+	Node GoalNode(28, 28);
 
-	Node * TempNode = EndNode;
+	Node node = A_star(StartNode, GoalNode);
+	Draw(node.OptimumPath(), Pos(GoalNode.X(), GoalNode.Y()), Map_SteamWorks);
 
-	if(EndNode->X() != GoalNode.X() || EndNode->Y() != GoalNode.Y())
-		return Final;
+	system("pause");
 
-	while(TempNode->X() != Start.X() && TempNode->X() != Start.X())
-	{
-		Final.push_back(Pos(TempNode->X(), TempNode->Y()));
-
-		TempNode = TempNode->GetCameFrom();
-	}
-
-	return Final;	//If size = 0; Failure,  Else; Succes
+	return 0;
 }
