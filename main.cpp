@@ -2,6 +2,9 @@
 #include <vector>
 #include <math.h>
 #include <algorithm>
+#include <conio.h>
+#include <string>
+#include <sstream>
 
 #include "Map.h"
 #include "Map_SteamWorks.h"
@@ -198,10 +201,10 @@ void Draw(std::vector<Pos> Path, Pos Target, Map map)
 
 			if(PrintPath)
 				std::cout<<"*";
-			else if(map[j][i] == 1)
-				std::cout<<"#";
 			else if(j == Target.X_ && i == Target.Y_)
 				std::cout<<"@";
+			else if(map[j][i] == 1)
+				std::cout<<"#";
 			else
 				std::cout<<" ";
 		}
@@ -275,9 +278,8 @@ Node A_star(Node Begin, Node End)
 			//std::cout<<"Voisin "<<i<<" : "<<OpenSet.back().F_Score()<<"\n";
 			//system("pause");
 		}
-		Draw(CurrentNode.OptimumPath(), Pos(End.X(), End.Y()), Map_SteamWorks);
 		system("cls");
-
+		Draw(CurrentNode.OptimumPath(), Pos(End.X(), End.Y()), Map_SteamWorks);
 	}
 
 
@@ -287,14 +289,53 @@ Node A_star(Node Begin, Node End)
 }
 
 
+
 int main()
 {
-	Node StartNode(1, 1, 0, 1, 1);
-	Node GoalNode(28, 28);
+	int StartNode_X = 1, StartNode_Y = 1, GoalNode_X = 28, GoalNode_Y = 28;
 
-	Node node = A_star(StartNode, GoalNode);
-	Draw(node.OptimumPath(), Pos(GoalNode.X(), GoalNode.Y()), Map_SteamWorks);
+	std::cout<<"Bienvenue sur une carte FRC SteamWorks\n\n\n";
+	std::string Command;
+	while(1)
+	{
+		std::getline(std::cin, Command);
+		
+		if(Command == "help")
+		{
+			std::cout<<"\n\n\t   ********** Help **********\n\n";
+			std::cout<<"set start node -> set the start position of the virtual robot\n\n";
+			std::cout<<"set goal node  -> set the goal position of the virtual robot\n\n";
+			std::cout<<"find path      -> start the A_star algorithm\n\n";
 
+			std::cout<<"\t   **************************\n\n";
+		}
+
+		if(Command == "set start node")
+		{
+			std::cout<<"Enter X : ";
+			std::cin>>StartNode_X;
+			std::cout<<"Enter Y : ";
+			std::cin>>StartNode_Y;
+			std::cout<<"\n\n";
+		}
+
+		if(Command == "set goal node")
+		{
+			std::cout<<"Enter X : ";
+			std::cin>>GoalNode_X;
+			std::cout<<"Enter Y : ";
+			std::cin>>GoalNode_Y;
+			std::cout<<"\n\n";
+		}
+
+		if(Command == "find path")
+		{
+			Node StartNode(StartNode_X, StartNode_Y, 0, 1, 1);
+			Node GoalNode(GoalNode_X, GoalNode_Y);
+			Node node = A_star(StartNode, GoalNode);
+			std::cout<<"\n\n";
+		}
+	}
 	system("pause");
 
 	return 0;
