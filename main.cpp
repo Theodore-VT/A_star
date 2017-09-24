@@ -110,9 +110,6 @@ float Node::CalcHeuristic(Node EndNode)
 
 void Node::GetNeighbours(Map map)
 {	
-	//TODO : add a map of walls
-	
-	
 	if(map[X_ + 1][Y_] != 1)
 		Neighbours_.push_back(Node(X_ + 1, Y_));
 	if(map[X_ - 1][Y_] != 1)
@@ -220,14 +217,13 @@ Node A_star(Node Begin, Node End)
 
 	Node CurrentNode = Begin;
 
-	//Map map;
 	while(OpenSet.size() > 0 && Map_SteamWorks[End.X()][End.Y()] != 1)
 	{
-
-		//std::cout<<"Searching...\n";
-		
 		int BestNodeIndex = GetLowestScoreNode(OpenSet);
 		CurrentNode = OpenSet[BestNodeIndex];
+
+		system("cls");
+		Draw(CurrentNode.OptimumPath(), Pos(End.X(), End.Y()), Map_SteamWorks);
 
 		if(CurrentNode == End)
 		{
@@ -235,17 +231,9 @@ Node A_star(Node Begin, Node End)
 			system("pause");
 			return CurrentNode;
 		}
-		//std::cout<<"Current : "<<CurrentNode<<"\n";
-		//std::cout<<"Best node index "<<BestNodeIndex<<"\n";
-		for(int i = 0; i < OpenSet.size(); ++i)
-		{
-			//std::cout<<OpenSet[i]<<"\n";
-		}
-		//system("pause");
 
 		OpenSet.erase(OpenSet.begin() + BestNodeIndex);
-		//std::cout<<OpenSet.size()<<"\n\n";
-
+		
 		ClosedSet.push_back(CurrentNode);
 		
 		CurrentNode.GetNeighbours(Map_SteamWorks);
@@ -254,7 +242,6 @@ Node A_star(Node Begin, Node End)
 		for(int i = 0; i < CurrentNode.Neighbours().size(); ++i)
 		{
 			Node Neighbour = CurrentNode.Neighbours()[i];
-			//std::cout<<"voisin "<<i<<" : "<<CurrentNode.X()<<",  "<<CurrentNode.Y()<<" -> "<<Neighbour.X()<<",  "<<Neighbour.Y()<<"\n";
 			
 			if(IsInVector(ClosedSet, CurrentNode.Neighbours()[i]))	//Already evaluated
 				continue;
@@ -263,7 +250,7 @@ Node A_star(Node Begin, Node End)
 				OpenSet.push_back(CurrentNode.Neighbours()[i]);
 
 			double Tentative_GScore = CurrentNode.G_Score() + CurrentNode.CalcHeuristic(OpenSet.back());
-			//std::cout<<"Tentative : "<<Tentative_GScore<<" VS "<<OpenSet.back().G_Score()<<"\n";
+			
 			if(Tentative_GScore >= OpenSet.back().G_Score())			//Not a new best path
 				continue;
 			
@@ -275,11 +262,7 @@ Node A_star(Node Begin, Node End)
 			OpenSet.back().SetG_Score(Tentative_GScore);
 			OpenSet.back().CalcHeuristic(End);
 			OpenSet.back().CalcF_Score();
-			//std::cout<<"Voisin "<<i<<" : "<<OpenSet.back().F_Score()<<"\n";
-			//system("pause");
 		}
-		system("cls");
-		Draw(CurrentNode.OptimumPath(), Pos(End.X(), End.Y()), Map_SteamWorks);
 	}
 
 
@@ -294,7 +277,7 @@ int main()
 {
 	int StartNode_X = 1, StartNode_Y = 1, GoalNode_X = 28, GoalNode_Y = 28;
 
-	std::cout<<"Bienvenue sur une carte FRC SteamWorks\n\n\n";
+	std::cout<<"Welcome on a FRC SteamWorks map!\n\n\n";
 	std::string Command;
 	while(1)
 	{
@@ -319,7 +302,7 @@ int main()
 			std::cout<<"\n\n";
 		}
 
-		if(Command == "set goal node")
+		else if(Command == "set goal node")
 		{
 			std::cout<<"Enter X : ";
 			std::cin>>GoalNode_X;
@@ -328,12 +311,16 @@ int main()
 			std::cout<<"\n\n";
 		}
 
-		if(Command == "find path")
+		else if(Command == "find path")
 		{
 			Node StartNode(StartNode_X, StartNode_Y, 0, 1, 1);
 			Node GoalNode(GoalNode_X, GoalNode_Y);
 			Node node = A_star(StartNode, GoalNode);
 			std::cout<<"\n\n";
+		}
+		else
+		{
+			std::cout<<"\""<<Command<<"\" : unknown command\n";
 		}
 	}
 	system("pause");
